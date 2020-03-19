@@ -2,8 +2,18 @@ import cv2
 import numpy as np
 import glob
 
+
+def erase_circles(image, circles):
+    color = (255, 255, 255) if image.shape[2] > 1 else 255
+
+    image = image.copy()
+    for circle in circles:
+        x, y, r = circle
+        cv2.circle(image, (x+1, y+1), r, color=color, thickness=cv2.FILLED)
+    return image
+
+
 def circle_filled(image, x, y, r):
-    rad  = r
     offset = r + 3
     if (image.shape[1]< x+offset or x-offset < 0) or (image.shape[0] < y+offset < 0 or y-offset < 0):
         return False
@@ -26,11 +36,11 @@ def circle_filled(image, x, y, r):
 
 def detect_circles(image):
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    _, gray = cv2.threshold(gray, 126, 255, cv2.THRESH_BINARY_INV)
     gray_blur = cv2.blur(gray, (3, 3))
-    # cv2.imshow('gray', gray_blur)
-    circles = cv2.HoughCircles(gray_blur, method=cv2.HOUGH_GRADIENT, dp=1, minDist=2, param1=50, param2=4,
-                               minRadius=1, maxRadius=7)
+    _, gray_thresh = cv2.threshold(gray_blur, 126, 255, cv2.THRESH_BINARY_INV)
+    # cv2.imshow('gray', gray)
+    circles = cv2.HoughCircles(gray_thresh, method=cv2.HOUGH_GRADIENT, dp=1, minDist=2, param1=50, param2=4,
+                               minRadius=2, maxRadius=7)
     circle_list = []
     if circles is None:
         return circle_list
@@ -50,44 +60,47 @@ def detect_circles(image):
                     circle_list.pop(n)
         if not found_bigger:
             circle_list.append((x, y, r))
+
+    # radius_median = np.median(np.asarray(circle_list))
+
     return circle_list
 
 
 def draw_circles(image, circles):
-    image = image.copy()
+    image = image
     for circle in circles:
         x, y, r = circle
         cv2.circle(image, (x, y), r, (0, 255, 0), 1)
     cv2.imshow("Detected Circle", image)
     cv2.waitKey(0)
 
-
-def nadus_dataset():
-    itemy = glob.glob('./img/*')
-    number = 1
-    for item in itemy:
-        img = cv2.imread(item)
-        circles = detect_circles(img)
-        width, height, _ = img.shape
-        s = int(width / 30)
-        for circle in circles:
-            x, y, _ = circle
-            try:
-                temp = img[y-s:y+s, x-s:x+s]
-                cv2.imwrite(f'out\\{number}.jpg', temp)
-                number += 1
-            except:
-                pass
-
-
-def resampluj():
-    itemy = glob.glob('./out/*')
-    number = 1
-    for item in itemy:
-        img = cv2.imread(item)
-        temp = cv2.resize(img, (64, 64))
-        cv2.imwrite(f'data\\{number}.jpg', temp)
-        number += 1
+#
+# def nadus_dataset():
+#     itemy = glob.glob('./img/*')
+#     number = 1
+#     for item in itemy:
+#         img = cv2.imread(item)
+#         circles = detect_circles(img)
+#         width, height, _ = img.shape
+#         s = int(width / 30)
+#         for circle in circles:
+#             x, y, _ = circle
+#             try:
+#                 temp = img[y-s:y+s, x-s:x+s]
+#                 cv2.imwrite(f'out\\{number}.jpg', temp)
+#                 number += 1
+#             except:
+#                 pass
+#
+#
+# def resampluj():
+#     itemy = glob.glob('./out/*')
+#     number = 1
+#     for item in itemy:
+#         img = cv2.imread(item)
+#         temp = cv2.resize(img, (64, 64))
+#         cv2.imwrite(f'data\\{number}.jpg', temp)
+#         number += 1
 
 
 if __name__ == '__main__':
