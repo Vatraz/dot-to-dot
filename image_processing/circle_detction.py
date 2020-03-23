@@ -1,6 +1,5 @@
 import cv2
 import numpy as np
-import glob
 
 
 def erase_circles(image, circles):
@@ -73,42 +72,3 @@ def draw_circles(image, circles):
         cv2.circle(image, (x, y), r, (0, 255, 0), 1)
     cv2.imshow("Detected Circle", image)
     cv2.waitKey(0)
-
-#
-# def nadus_dataset():
-#     itemy = glob.glob('./img/*')
-#     number = 1
-#     for item in itemy:
-#         img = cv2.imread(item)
-#         circles = detect_circles(img)
-#         width, height, _ = img.shape
-#         s = int(width / 30)
-#         for circle in circles:
-#             x, y, _ = circle
-#             try:
-#                 temp = img[y-s:y+s, x-s:x+s]
-#                 cv2.imwrite(f'out\\{number}.jpg', temp)
-#                 number += 1
-#             except:
-#                 pass
-#
-#
-# def resampluj():
-#     itemy = glob.glob('./out/*')
-#     number = 1
-#     for item in itemy:
-#         img = cv2.imread(item)
-#         temp = cv2.resize(img, (64, 64))
-#         cv2.imwrite(f'data\\{number}.jpg', temp)
-#         number += 1
-
-
-if __name__ == '__main__':
-    pass
-    # resampluj()
-    # nadus_dataset()
-    # i = cv2.imread(itemy[0])
-    # cv2.imshow('hihi', i)
-    # cv2.waitKey()
-    # print(itemy)
-    # nadus_dataset()
