@@ -2,10 +2,14 @@ import numpy as np
 import cv2
 
 
-def distance_to_bounding_rect(bounding_rect, point):
+
+
+def bounding_rect_rel_pos(bounding_rect, point):
     (x, y, w, h) = bounding_rect
-    (br_center_x, br_center_y) = (x + w//2, y+h//2)
-    return np.sqrt((br_center_x - point[0])**2 + (br_center_y - point[1])**2)
+    x_br, y_br = int(x+w/2), int(y+h/2)
+    (x_p, y_p) = point
+
+    return (x_br-x_p, y_br-y_p)
 
 
 def resize(image, width=None, height=None, interpolation=cv2.INTER_AREA):

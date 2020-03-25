@@ -5,7 +5,7 @@ from image_processing.number_detection import detect_numbers
 from image_processing.utils import resize
 
 
-image = cv2.imread('img\(1).jpg', cv2.IMREAD_COLOR)
+image = cv2.imread('./img/(1).jpg', cv2.IMREAD_COLOR)
 h, w = image.shape[:2]
 
 if w > h:

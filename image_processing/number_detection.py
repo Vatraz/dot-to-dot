@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 
 from classify.classify import classify
-from image_processing.utils import center
+from image_processing.utils import center, bounding_rect_rel_pos
 
 shape_x, shape_y = (128, 128)
 digit_w_min, digit_w_max = (6, 55)
@@ -41,6 +41,13 @@ def get_circle_image(image, circle):
     return temp
 
 
+def split_digits(bounding_rect):
+    (x, y, w, h) = bounding_rect
+    w_div = int(w/2)
+    digit_br_list = [(x, y, w_div, h), (x+w_div, y, w_div, h)]
+    return digit_br_list
+
+
 def circle_bounding_rect(contours, erase_img_list=(), erase_color=0):
     found_circle = True
     for contour in contours:
@@ -56,6 +63,7 @@ def circle_bounding_rect(contours, erase_img_list=(), erase_color=0):
 
 def detect_numbers(image, circles):
     image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
     for circle in circles:
         cropped = get_circle_image(image, circle)
         circle_image = cv2.resize(cropped, (shape_x, shape_y))
@@ -69,6 +77,7 @@ def detect_numbers(image, circles):
 
         (contours, _) = cv2.findContours(thresh.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         bounding_rects = [cv2.boundingRect(contour) for contour in contours]
+        found_numbers = []
         # cv2.drawContours(circle_image, contours, -1, color=(21, 32, 255))
         for bounding_rect in bounding_rects:
             (x, y, w, h) = bounding_rect
@@ -76,10 +85,18 @@ def detect_numbers(image, circles):
             if w > digit_w_max or h > digit_h_max or h < digit_h_min or w < digit_w_min \
                     or contour_is_circle([x, y, w, h]):
                 continue
+            # If number contains two digits
+            if w > int(digit_w_max * 2/3):
+                found_numbers.extend(split_digits(bounding_rect))
+            #
+            else:
+                found_numbers.append(bounding_rect)
+
+
             # check value of found digit
-            cv2.rectangle(circle_image, (x, y), (x + w, y + h), (0, 255, 0), 1)
-            number_image = center(thresh[y:y+h, x:x+w], (20, 20))
-            digit = classify(number_image)
-            print('->> ', digit)
-            cv2.imshow(':>', number_image)
-            cv2.waitKey()
+            # cv2.rectangle(circle_image, (x, y), (x + w, y + h), (0, 255, 0), 1)
+            # number_image = center(thresh[y:y+h, x:x+w], (20, 20))
+            # digit = classify(number_image)
+            # print('->> ', digit)
+            # cv2.imshow(':>', number_image)
+            # cv2.waitKey()
