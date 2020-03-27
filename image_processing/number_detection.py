@@ -61,6 +61,13 @@ def circle_bounding_rect(contours, erase_img_list=(), erase_color=0):
     return found_circle
 
 
+def classify_digit(image, bounding_rect):
+    (x, y, w, h) = bounding_rect
+    number_image = center(image[y:y + h, x:x + w], (20, 20))
+    digit = classify(number_image)
+    return digit
+
+
 def detect_numbers(image, circles):
     image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
@@ -87,12 +94,18 @@ def detect_numbers(image, circles):
                 continue
             # If number contains two digits
             if w > int(digit_w_max * 2/3):
-                found_numbers.extend(split_digits(bounding_rect))
-            #
+                for br in split_digits(bounding_rect):
+                    found_numbers.append([
+                        classify_digit(thresh, br),
+                        bounding_rect_rel_pos(br, circle[:2]),
+                    ])
             else:
-                found_numbers.append(bounding_rect)
+                found_numbers.append([
+                        classify_digit(thresh, bounding_rect),
+                        bounding_rect_rel_pos(bounding_rect, circle[:2]),
+                ])
 
-
+            pass
             # check value of found digit
             # cv2.rectangle(circle_image, (x, y), (x + w, y + h), (0, 255, 0), 1)
             # number_image = center(thresh[y:y+h, x:x+w], (20, 20))
