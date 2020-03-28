@@ -2,14 +2,22 @@ import numpy as np
 import cv2
 
 
+def bounding_rect_centroid(bounding_rect):
+    (x, y, w, h) = bounding_rect
+    x_br, y_br = int(x + w / 2), int(y + h / 2)
+    return x_br, y_br
 
 
 def bounding_rect_rel_pos(bounding_rect, point):
-    (x, y, w, h) = bounding_rect
-    x_br, y_br = int(x+w/2), int(y+h/2)
-    (x_p, y_p) = point
-
+    x_br, y_br = bounding_rect_centroid(bounding_rect)
+    x_p, y_p = point[0],  point[1]
     return (x_br-x_p, y_br-y_p)
+
+
+def distance_to_point(bounding_rect, point):
+    x, y = bounding_rect_rel_pos(bounding_rect, point)
+    distance = np.sqrt(x**2 + y**2)
+    return distance
 
 
 def resize(image, width=None, height=None, interpolation=cv2.INTER_AREA):

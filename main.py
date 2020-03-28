@@ -12,9 +12,7 @@ if w > h:
     image = resize(image, width=1200)
 else:
     image = resize(image, height=1200)
-# cv2.imshow('haha', image)
-# cv2.waitKey()
+
 
 circles = detect_circles(image)
-
-detect_numbers(image, circles)
+numerated_circles = detect_numbers(image, circles)
