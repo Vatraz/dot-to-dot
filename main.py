@@ -1,6 +1,6 @@
 import cv2
 
-from image_processing.circle_detction import detect_circles
+from image_processing.dots_detection import detect_dots
 from image_processing.number_detection import detect_numbers
 from image_processing.utils import resize
 
@@ -13,6 +13,5 @@ if w > h:
 else:
     image = resize(image, height=1200)
 
-
-circles = detect_circles(image)
+circles = detect_dots(image)
 numerated_circles = detect_numbers(image, circles)
