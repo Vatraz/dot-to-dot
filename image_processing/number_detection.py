@@ -11,6 +11,12 @@ CIRCLE_MAX = 20
 
 
 def contour_is_circle(bounding_rect):
+    """
+    Checks if the bounding rect contains a circle.
+
+    :param bounding_rect: tested bounding rect (x, y, width, height)
+    :return: whether bounding rect contains a circle
+    """
     (x, y, w, h) = bounding_rect
     if abs(h - w) <= 3 and w <= CIRCLE_MAX and h <= CIRCLE_MAX:
         return True
@@ -18,6 +24,13 @@ def contour_is_circle(bounding_rect):
 
 
 def get_circle_image(image, circle):
+    """
+    Returns a segment of the image copy that contains the circle.
+
+    :param image: processed image
+    :param circle: circle in (x, y, radius) format
+    :return: a fragment of the image containing the circle
+    """
     height, width = image.shape[:2]
     x, y, _ = circle
     offset = int(width / 30)
@@ -42,26 +55,51 @@ def get_circle_image(image, circle):
 
 
 def split_digits(bounding_rect):
+    """
+    Returns two bounding rectangles obtained from the vertically divided bounding rect.
+
+    :param bounding_rect: Bounding rectangle (x, y, width, height)
+    :return: List of bounding rectangles
+    """
     (x, y, w, h) = bounding_rect
     w_div = int(w/2)
     digit_br_list = [(x, y, w_div, h), (x+w_div, y, w_div, h)]
     return digit_br_list
 
 
-def circle_bounding_rect(contours, erase_img_list=(), erase_color=0):
+def circle_in_center(contours, image_shape, erase_img_list=None, erase_color=0):
+    """
+    Checks if at least one of the contours is a circle in the image center. If erase_img_list is not None,
+    fills the contour with erase_color in each image in the list.
+
+    :param contours: list of contours
+    :param image_shape: shape of the image
+    :param erase_img_list: list of images from which circles will be removed.
+    :param erase_color: background color of images in erase_img_list
+    :return: whether a circle is in the image center
+    """
+    shape_y, shape_x = image_shape[:2]
     found_circle = True
     for contour in contours:
         (x, y, w, h) = cv2.boundingRect(contour)
-        if int(SHAPE_X * 0.4) < int(x + w / 2) < int(SHAPE_X * 0.6) and int(SHAPE_Y * 0.4) < int(y + h / 2) < int(
-                SHAPE_Y * 0.6):
+        if int(shape_x * 0.4) < int(x + w / 2) < int(shape_x * 0.6) and \
+                int(shape_y * 0.4) < int(y + h / 2) < int(shape_y * 0.6):
             if not contour_is_circle([x, y, w, h]):
                 found_circle = False
-            for image in erase_img_list:
-                cv2.rectangle(image, (x, y), (x + w, y + h), color=erase_color, thickness=cv2.FILLED)
+            if erase_img_list:
+                for image in erase_img_list:
+                    cv2.rectangle(image, (x, y), (x + w, y + h), color=erase_color, thickness=cv2.FILLED)
     return found_circle
 
 
 def classify_digit(image, bounding_rect):
+    """
+    Returns predicted value of a digit in the image at the location described by the bounding rectangle.
+
+    :param image: image
+    :param bounding_rect: bounding rectangle (x, y, width, height)
+    :return: number
+    """
     (x, y, w, h) = bounding_rect
     number_image = center(image[y:y + h, x:x + w], (20, 20))
     digit = classify(number_image)
@@ -69,9 +107,16 @@ def classify_digit(image, bounding_rect):
 
 
 def get_number(digit_br_list, image):
+    """
+    Returns a number closest to the center of the image
+
+    :param digit_br_list: list of bounding rects that contain digit
+    :param image: grayscale image
+    :return: number
+    """
     if not digit_br_list:
         return None
-    circle_point = (SHAPE_X // 2, SHAPE_Y // 2)
+    circle_point = (image.shape[1] // 2, image.shape[0] // 2)
     if len(digit_br_list) == 1:
         number = classify_digit(image, digit_br_list[0])
     else:
@@ -83,34 +128,44 @@ def get_number(digit_br_list, image):
         second_idx = int(np.argmin([distance_to_point(br, nearest_point) for br in digit_br_list]))
         second = digit_br_list.pop(second_idx)
         second_point = bounding_rect_centroid(second)
-        if all([abs(second_point[1] - nearest_point[1]) < DIGIT_H_MAX,
-                distance_to_point(second, nearest_point) < DIGIT_W_MAX]):
+
+        # if it is a two-digit number
+        if abs(second_point[1] - nearest_point[1]) < DIGIT_H_MAX and \
+                distance_to_point(second, nearest_point) < DIGIT_W_MAX:
             second_digit = classify_digit(image, second)
             if second[0] < nearest[0]:
                 number = second_digit * 10 + nearest_digit
             else:
                 number = nearest_digit * 10 + second_digit
+        # if the digits are too far
         else:
             number = nearest_digit
     return number
 
 
-def detect_numbers(image, circles):
+def detect_numbers(image, dots):
+    """
+    Assigns numbers to dots in the list.
+
+    :param image: BGR image
+    :param dots: list of dots in (x, y, radius) format
+    :return: list of dicts: {'dot': (x, y, radius), 'number': assigned number}
+    """
     image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    numerated_circles = []
-    for circle in circles:
-        cropped = get_circle_image(image, circle)
+    numerated_dots = []
+    for dot in dots:
+        cropped = get_circle_image(image, dot)
         circle_image = cv2.resize(cropped, (SHAPE_X, SHAPE_Y))
 
         _, thresh = cv2.threshold(circle_image, 160, 255, cv2.THRESH_BINARY_INV)
 
         # Erase object in the centre of the image, and check if it is a circle
-        (contours, _) = cv2.findContours(thresh.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-        if not circle_bounding_rect(contours, erase_img_list=[thresh], erase_color=0):
+        contours, _ = cv2.findContours(thresh.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        if not circle_in_center(contours, circle_image.shape, erase_img_list=[thresh], erase_color=0):
             continue
 
         # Find contours of numbers
-        (contours, _) = cv2.findContours(thresh.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        contours, _ = cv2.findContours(thresh.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         bounding_rects = [cv2.boundingRect(contour) for contour in contours]
         # cv2.drawContours(circle_image, contours, -1, color=(21, 32, 255))
 
@@ -131,5 +186,5 @@ def detect_numbers(image, circles):
 
         number = get_number(digit_br_list, thresh)
 
-        numerated_circles.append({'circle': circle[:2], 'number': number})
-    return numerated_circles
+        numerated_dots.append({'dot': dot[:2], 'number': number})
+    return numerated_dots

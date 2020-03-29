@@ -13,5 +13,5 @@ if w > h:
 else:
     image = resize(image, height=1200)
 
-circles = detect_dots(image)
-numerated_circles = detect_numbers(image, circles)
+dots = detect_dots(image)
+numerated_dots = detect_numbers(image, dots)
