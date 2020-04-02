@@ -2,12 +2,13 @@ import cv2
 import numpy as np
 
 from classify.classify import classify
-from image_processing.utils import center, distance_to_point, bounding_rect_centroid
+from image_processing.utils import center, distance_to_point, bounding_rect_centroid, erode_thresh, \
+    bounding_rect_list_contains
 
 SHAPE_X, SHAPE_Y = (128, 128)
-DIGIT_W_MIN, DIGIT_W_MAX = (6, 55)
-DIGIT_H_MIN, DIGIT_H_MAX = (17, 65)
-CIRCLE_MAX = 20
+DIGIT_W_MIN, DIGIT_W_MAX = (6, 10)
+DIGIT_H_MIN, DIGIT_H_MAX = (13, 20)
+CIRCLE_MAX = 6
 
 
 def contour_is_circle(bounding_rect):
@@ -54,17 +55,34 @@ def get_circle_image(image, circle):
     return temp
 
 
-def split_digits(bounding_rect):
+def split_digits(bounding_rect, n=2):
     """
-    Returns two bounding rectangles obtained from the vertically divided bounding rect.
+    Returns bounding rectangles obtained from the vertically divided bounding rectangle.
 
-    :param bounding_rect: Bounding rectangle (x, y, width, height)
-    :return: List of bounding rectangles
+    :param bounding_rect: bounding rectangle (x, y, width, height)
+    :param i: number of slices
+    :return: list of bounding rectangles
     """
-    (x, y, w, h) = bounding_rect
-    w_div = int(w/2)
-    digit_br_list = [(x, y, w_div, h), (x+w_div, y, w_div, h)]
+    x, y, w, h = bounding_rect
+    w_div = int(w//n)
+
+    digit_br_list = []
+    for i in range(n):
+        digit_br_list.append((x + i*w_div, y, w_div, h))
     return digit_br_list
+
+
+def erase_center_dot(image, radius, erase_color=0):
+    """
+    Removes dot in the center of the image, by drawing circle filled with erase_color.
+
+    :param image: image
+    :param radius: radius of dot
+    :param erase_color: background color - default: 0
+    """
+    shape = image.shape
+    mid_x, mid_y = shape[1]//2, shape[0]//2
+    cv2.circle(image, (mid_x, mid_y), radius, color=erase_color, thickness=cv2.FILLED)
 
 
 def circle_in_center(contours, image_shape, erase_img_list=None, erase_color=0):
@@ -101,7 +119,7 @@ def classify_digit(image, bounding_rect):
     :return: number
     """
     (x, y, w, h) = bounding_rect
-    number_image = center(image[y:y + h, x:x + w], (20, 20))
+    number_image = center(image[y:y + h, x:x + w], (28, 28))
     digit = classify(number_image)
     return digit
 
@@ -152,39 +170,52 @@ def detect_numbers(image, dots):
     :return: list of dicts: {'dot': (x, y, radius), 'number': assigned number}
     """
     image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    # invert the image
+    image = 255 - image
+    # get radius of dots
+    dot_radius = int(np.median(np.array(dots)[:, 2]))*3
+
     numerated_dots = []
     for dot in dots:
         cropped = get_circle_image(image, dot)
         circle_image = cv2.resize(cropped, (SHAPE_X, SHAPE_Y))
 
-        _, thresh = cv2.threshold(circle_image, 160, 255, cv2.THRESH_BINARY_INV)
-
-        # Erase object in the centre of the image, and check if it is a circle
-        contours, _ = cv2.findContours(thresh.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-        if not circle_in_center(contours, circle_image.shape, erase_img_list=[thresh], erase_color=0):
-            continue
+        _, thresh = cv2.threshold(circle_image, 60, 255, cv2.THRESH_BINARY)
+        erase_center_dot(thresh, dot_radius)
 
         # Find contours of numbers
-        contours, _ = cv2.findContours(thresh.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-        bounding_rects = [cv2.boundingRect(contour) for contour in contours]
-        # cv2.drawContours(circle_image, contours, -1, color=(21, 32, 255))
+        contours, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        bounding_rect_list = [cv2.boundingRect(contour) for contour in contours]
+        # cv2.drawContours(circle_image, contours, -1, color=255)
 
-        # create list of numbers
+        # create list of digits bounding rectangles
         digit_br_list = []
-        for bounding_rect in bounding_rects:
+        for bounding_rect in bounding_rect_list:
             (x, y, w, h) = bounding_rect
-            # Ignore if found object is not a number
-            if w > DIGIT_W_MAX or h > DIGIT_H_MAX or h < DIGIT_H_MIN or w < DIGIT_W_MIN \
-                    or contour_is_circle([x, y, w, h]):
+
+            if bounding_rect_list_contains(bounding_rect_list, bounding_rect):
                 continue
+
             # If number contains two digits
-            if w > int(DIGIT_W_MAX * 2 / 3):
-                for br in split_digits(bounding_rect):
+            if w > int(DIGIT_W_MAX):
+                for br in split_digits(bounding_rect, n=2):
+                    digit_br_list.append(br)
+            elif w > int(DIGIT_W_MAX * 3/2):
+                for br in split_digits(bounding_rect, n=3):
                     digit_br_list.append(br)
             else:
                 digit_br_list.append(bounding_rect)
 
-        number = get_number(digit_br_list, thresh)
+        for bounding_rect in digit_br_list:
+            (x, y, w, h) = bounding_rect
+            cv2.rectangle(circle_image, (x,y), (x+w,y+h), 255)
+
+        number_img = circle_image
+        number = get_number(digit_br_list, number_img)
+        # print('--')
+        # print(number)
+        # cv2.imshow('hihi', number_img)
+        # cv2.waitKey(0)
 
         numerated_dots.append({'dot': dot[:2], 'number': number})
     return numerated_dots

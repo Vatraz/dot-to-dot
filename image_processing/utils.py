@@ -2,6 +2,17 @@ import numpy as np
 import cv2
 
 
+def bounding_rect_list_contains(bounding_rect_list, bounding_rect):
+    x, y, w, h = bounding_rect
+    for br in bounding_rect_list:
+        x_br, y_br, w_br, h_br = br
+        if br == bounding_rect:
+            continue
+        if x_br <= x <= x_br + w_br - w and y_br <= y <= y_br + h_br - h:
+            return True
+    return False
+
+
 def bounding_rect_centroid(bounding_rect):
     (x, y, w, h) = bounding_rect
     x_br, y_br = int(x + w / 2), int(y + h / 2)
@@ -50,3 +61,18 @@ def center(image, des_shape):
 
     des_image[offset_y:offset_y + image.shape[0], offset_x:offset_x + image.shape[1]] = image
     return des_image
+
+def erode_thresh(img_thresh, iter=1):
+    """
+    Returns the eroded img_thresh image.
+
+    :param img_thresh: grayscale image
+    :param iter: number of iterations
+    :return: eroded image
+    """
+    element = cv2.getStructuringElement(cv2.MORPH_CROSS, (3, 3))
+    img = cv2.erode(img_thresh, element)
+    while iter > 1:
+        img = cv2.erode(img_thresh, element)
+        iter -= 1
+    return img

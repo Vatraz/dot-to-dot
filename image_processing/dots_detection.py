@@ -1,7 +1,6 @@
 import cv2
 import numpy as np
 
-
 DOT_MIN_DIST = 10
 
 
@@ -65,11 +64,10 @@ def get_circle_list(image):
     """
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     gray_blur = cv2.blur(gray, (3, 3))
-    _, gray_thresh = cv2.threshold(gray_blur, 125, 255, cv2.THRESH_BINARY_INV)
-    # cv2.imshow('gray', gray)
+    _, gray_thresh = cv2.threshold(gray, 50, 255, cv2.THRESH_BINARY_INV)
 
-    circles = cv2.HoughCircles(gray_thresh, method=cv2.HOUGH_GRADIENT, dp=1, minDist=2, param1=50, param2=4,
-                               minRadius=3, maxRadius=7)
+    circles = cv2.HoughCircles(gray_blur, method=cv2.HOUGH_GRADIENT, dp=1, minDist=2, param1=50, param2=5,
+                               minRadius=1, maxRadius=3)
     circles = np.int16(np.around(circles))[0]
 
     circles = [circle for circle in circles if is_circle(gray_thresh, circle)]
@@ -85,6 +83,7 @@ def detect_dots(image):
     :return: list of dots in (x, y, r) format
     """
     circles = get_circle_list(image)
+    return circles
     dots_list = []
     for circle in circles:
         found_bigger = False
@@ -107,6 +106,7 @@ def draw_circles(image, circles):
 
     :param image: image on which circles will be drawn
     :param circles: list of circles in (x, y, r) format
+    :return: image
     """
     image = image.copy()
     for circle in circles:
