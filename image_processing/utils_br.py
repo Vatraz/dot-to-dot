@@ -26,7 +26,7 @@ def bounding_rect_rel_pos(bounding_rect, point):
     return (x_br-x_p, y_br-y_p)
 
 
-def distance_to_point(bounding_rect, point):
+def distance_br_to_point(bounding_rect, point):
     x, y = bounding_rect_rel_pos(bounding_rect, point)
     distance = np.sqrt(x**2 + y**2)
     return distance
@@ -67,4 +67,5 @@ def filter_bounding_rect(image, bounding_rect):
             break
         # update output bounding rectangle
         br_filtered = (x+l_offset, y+u_offset, w - (l_offset+r_offset), h - (u_offset+b_offset))
+
     return br_filtered

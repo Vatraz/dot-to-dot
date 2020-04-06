@@ -5,8 +5,6 @@ import numpy as np
 def resize(image, width=None, height=None, interpolation=cv2.INTER_AREA):
     h, w = image.shape[:2]
 
-    if h == 0:
-        print('halo')
     if width is None and height is None:
         return image
 
@@ -28,8 +26,7 @@ def normalize(img):
 
 def center(image, des_shape):
     des_image = np.zeros(des_shape, dtype="uint8")
-    h, w = image.shape[:2]
-    if h > w:
+    if image.shape[0] > image.shape[1]:
         image = resize(image, height=des_shape[0])
     else:
         image = resize(image, width=des_shape[1])
@@ -39,22 +36,6 @@ def center(image, des_shape):
 
     des_image[offset_y:offset_y + image.shape[0], offset_x:offset_x + image.shape[1]] = image
     return des_image
-
-
-def erode_thresh(img_thresh, iter=1):
-    """
-    Returns the eroded img_thresh image.
-
-    :param img_thresh: grayscale image
-    :param iter: number of iterations
-    :return: eroded image
-    """
-    element = cv2.getStructuringElement(cv2.MORPH_CROSS, (3, 3))
-    img = cv2.erode(img_thresh, element)
-    while iter > 1:
-        img = cv2.erode(img_thresh, element)
-        iter -= 1
-    return img
 
 
 def calculate_indent(elements):
@@ -68,7 +49,7 @@ def calculate_indent(elements):
 
 
 def vertical_indent(image, x_pos):
-    column = image[:,x_pos].ravel()
+    column = image[:, x_pos].ravel()
     left = calculate_indent(column)
     right = calculate_indent(reversed(column))
     return [left, right]
@@ -88,17 +69,20 @@ def get_vertical_indents(image):
     return np.array(indents)
 
 
-def indents_exc_thresh(image, threshold=9, trim=0):
+def indents_exc_thresh(image, threshold=0.9, trim=0):
     image = image[:,trim:image.shape[1]-trim]
+    threshold = int(threshold * image.shape[0])
+
     indents = get_vertical_indents(image)
+
     indents_exc = []
-    prev = False
+    prev_exc = False
     for indent in indents:
-        if indent > threshold and prev == False:
+        if indent > threshold and not prev_exc:
             indents_exc.append(indent)
-            prev = True
-        if indent <= threshold:
-            prev = False
+            prev_exc = True
+        elif indent <= threshold:
+            prev_exc = False
 
     indents = indents[indents > threshold]
     return indents
