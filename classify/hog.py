@@ -1,5 +1,6 @@
 from skimage import feature
 
+
 class HOG:
     def __init__(self, orientations=18, pixels_per_cell=(8, 8), cells_per_block=(1, 1), transform=True):
         self.orienations = orientations
@@ -13,5 +14,4 @@ class HOG:
                            pixels_per_cell = self.pixels_per_cell,
                            cells_per_block = self.cells_per_block,
                            transform_sqrt = self.transform)
-
         return hist
