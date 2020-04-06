@@ -1,25 +1,6 @@
 import cv2
 import numpy as np
 
-DOT_MIN_DIST = 10
-
-
-def erase_circles(image, circles):
-    """
-    Returns a copy of the image without circles from the circles list.
-
-    :param image: image
-    :param circles: list of circles in (x, y, r) format
-    :return: image with circles erased
-    """
-    color = (255, 255, 255) if image.shape[2] > 1 else 255
-
-    image = image.copy()
-    for circle in circles:
-        x, y, r = circle
-        cv2.circle(image, (x+1, y+1), r, color=color, thickness=cv2.FILLED)
-    return image
-
 
 def is_circle(image, circle):
     """
@@ -55,26 +36,6 @@ def is_circle(image, circle):
         return False
 
 
-def get_circle_list(image):
-    """
-    Returns a list of circles found in the BGR image.
-
-    :param image: image on which circles will be searched
-    :return: list of circles in (x, y, r) format
-    """
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    gray_blur = cv2.blur(gray, (3, 3))
-    _, gray_thresh = cv2.threshold(gray, 50, 255, cv2.THRESH_BINARY_INV)
-
-    circles = cv2.HoughCircles(gray_blur, method=cv2.HOUGH_GRADIENT, dp=1, minDist=2, param1=50, param2=5,
-                               minRadius=1, maxRadius=3)
-    circles = np.int16(np.around(circles))[0]
-
-    circles = [circle for circle in circles if is_circle(gray_thresh, circle)]
-
-    return circles
-
-
 def detect_dots(image):
     """
     Returns a list containing position (x, y) and radius r of dots found in the image.
@@ -82,34 +43,14 @@ def detect_dots(image):
     :param image: processed image
     :return: list of dots in (x, y, r) format
     """
-    circles = get_circle_list(image)
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    gray_blur = cv2.blur(gray, (3, 3))
+    _, gray_thresh = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY_INV)
+
+    circles = cv2.HoughCircles(gray_blur, method=cv2.HOUGH_GRADIENT, dp=1, minDist=2, param1=50, param2=5,
+                               minRadius=4, maxRadius=8)
+    circles = np.int16(np.around(circles))[0]
+
+    circles = [circle for circle in circles if is_circle(gray_thresh, circle)]
+
     return circles
-    dots_list = []
-    for circle in circles:
-        found_bigger = False
-        x, y, r = circle
-        for n, dot in enumerate(dots_list):
-            if abs(x - dot[0]) < DOT_MIN_DIST and abs(y - dot[1]) < DOT_MIN_DIST:
-                if dot[2] > r:
-                    found_bigger = True
-                else:
-                    dots_list.pop(n)
-        if not found_bigger:
-            dots_list.append((x, y, r))
-
-    return dots_list
-
-
-def draw_circles(image, circles):
-    """
-    Returns a copy of the image with circles drawn on it.
-
-    :param image: image on which circles will be drawn
-    :param circles: list of circles in (x, y, r) format
-    :return: image
-    """
-    image = image.copy()
-    for circle in circles:
-        x, y, r = circle
-        cv2.circle(image, (x, y), r, (0, 255, 0), 1)
-    return image
